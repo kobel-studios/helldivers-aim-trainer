@@ -110,14 +110,19 @@ WEAPONS = [
 ]
 
 TYPES = [
-    dict(n="Scavenger", hp=40, r=0.55, spd=4.5, col=(255, 154, 60), score=10, wt=26, kind="bug"),
-    dict(n="Hunter", hp=70, r=0.7, spd=6, col=(255, 194, 60), score=15, wt=18, kind="bug", vz=-1.4, min=15),
-    dict(n="Warrior", hp=160, r=1.05, spd=3, col=(255, 122, 46), score=25, wt=18, kind="bug"),
-    dict(n="Bile Spewer", hp=420, r=1.7, spd=1.4, col=(157, 255, 92), score=60, wt=9, kind="bug", min=25),
-    dict(n="Shrieker", hp=60, r=0.75, spd=11, col=(201, 140, 255), score=30, wt=14, kind="fly"),
-    dict(n="Trooper", hp=90, r=0.8, spd=3.6, col=(255, 92, 92), score=20, wt=16, kind="bot"),
-    dict(n="Devastator", hp=300, r=1.1, spd=2.2, col=(226, 59, 59), score=45, wt=9, kind="bot", min=20),
-    dict(n="Hulk", hp=900, r=1.9, spd=1.1, col=(176, 42, 42), score=120, wt=5, kind="bot", min=40),
+    dict(n="Scavenger", hp=40, r=0.55, spd=4.5, col=(255, 154, 60), score=10, wt=26, kind="bug", fac="bug"),
+    dict(n="Hunter", hp=70, r=0.7, spd=6, col=(255, 194, 60), score=15, wt=18, kind="bug", fac="bug", vz=-1.4, min=15),
+    dict(n="Warrior", hp=160, r=1.05, spd=3, col=(255, 122, 46), score=25, wt=18, kind="bug", fac="bug"),
+    dict(n="Bile Spewer", hp=420, r=1.7, spd=1.4, col=(157, 255, 92), score=60, wt=9, kind="bug", fac="bug", min=25),
+    dict(n="Shrieker", hp=60, r=0.75, spd=11, col=(201, 140, 255), score=30, wt=14, kind="bug", fac="bug", flyf=True),
+    dict(n="Trooper", hp=90, r=0.8, spd=3.6, col=(255, 92, 92), score=20, wt=16, kind="bot", fac="bot"),
+    dict(n="Devastator", hp=300, r=1.1, spd=2.2, col=(226, 59, 59), score=45, wt=9, kind="bot", fac="bot", min=20),
+    dict(n="Hulk", hp=900, r=1.9, spd=1.1, col=(176, 42, 42), score=120, wt=5, kind="bot", fac="bot", min=40),
+    dict(n="Voteless", hp=50, r=0.6, spd=5, col=(180, 200, 220), score=10, wt=20, kind="ill", fac="ill", vz=-1.2, min=10),
+    dict(n="Watcher", hp=35, r=0.5, spd=12, col=(150, 220, 255), score=15, wt=12, kind="ill", fac="ill", flyf=True),
+    dict(n="Overseer", hp=110, r=0.8, spd=7, col=(90, 110, 160), score=30, wt=15, kind="ill", fac="ill", flyf=True),
+    dict(n="Fleshmob", hp=600, r=1.6, spd=1.6, col=(200, 160, 180), score=70, wt=8, kind="ill", fac="ill", min=25),
+    dict(n="Harvester", hp=1200, r=2.2, spd=1.0, col=(70, 80, 120), score=150, wt=4, kind="ill", fac="ill", min=45),
 ]
 
 # ---------- state ----------
@@ -367,11 +372,7 @@ def throw_nade(power):
 
 
 def fac_ok(t):
-    if faction == "bugs":
-        return t["kind"] != "bot"
-    if faction == "bots":
-        return t["kind"] == "bot"
-    return True
+    return faction == "mixed" or t["fac"] == faction
 
 
 def set_faction(f):
@@ -392,7 +393,7 @@ def spawn():
             typ = t
             break
     z = R(18, 55)
-    fly = typ["kind"] == "fly"
+    fly = typ.get("flyf", False)
     targets.append(dict(type=typ, x=R(-z * 0.55, z * 0.55), y=R(4, 11) if fly else 0, z=z,
                         vx=random.choice((-1, 1)) * typ["spd"], vz=typ.get("vz", 0),
                         hp=typ["hp"], r=typ["r"], fly=fly, ph=R(0, 6), life=0, flash=0))
@@ -529,8 +530,14 @@ def update(dt):
 
 
 # ---------- drawing ----------
+_FONTS = {}
+
+
 def font(size, bold=False):
-    return pygame.font.SysFont("segoeui", size, bold=bold)
+    key = (size, bold)
+    if key not in _FONTS:
+        _FONTS[key] = pygame.font.SysFont("segoeui", size, bold=bold)
+    return _FONTS[key]
 
 
 def txt(surf, s, x, y, size, col, center=False, bold=False):
@@ -604,9 +611,83 @@ def draw_viewmodel(surf, T):
         pygame.draw.polygon(surf, (255, 230, 150), pts)
 
 
+_PANELS = {}
+
+
+def draw_target(surf, t, px, py, s):
+    typ = t["type"]
+    n = typ["n"]
+    col = (255, 255, 255) if t["flash"] > 0 else typ["col"]
+    dark = tuple(int(c * 0.45) for c in col)
+    d = 1 if t["vx"] >= 0 else -1
+    lw = max(1, int(s * 0.09))
+    lp = math.sin(st["time"] * 9 + t["ph"]) * s * 0.3
+    if n in ("Scavenger", "Hunter", "Warrior", "Bile Spewer"):
+        for i in (-1, 0, 1):
+            lx = px + i * s * 0.5
+            pygame.draw.line(surf, dark, (lx, py + s * 0.3),
+                             (lx + d * s * 0.4 + lp * (1 if i % 2 else -1), py + s * 1.1), lw)
+        if n == "Bile Spewer":
+            pygame.draw.ellipse(surf, (190, 255, 140), (px - s * 1.15, py - s * 0.75, s * 1.5, s * 1.5))
+            pygame.draw.ellipse(surf, col, (px - s * 1.15, py - s * 0.75, s * 1.5, s * 1.5), max(1, lw // 2))
+        else:
+            pygame.draw.ellipse(surf, col, (px - s * 0.9, py - s * 0.55, s * 1.5, s * 1.15))
+        pygame.draw.circle(surf, col, (int(px + d * s * 0.75), int(py - s * 0.15)), int(s * 0.42))
+        pygame.draw.circle(surf, (20, 10, 5), (int(px + d * s * 0.92), int(py - s * 0.25)), max(1, int(s * 0.09)))
+        pygame.draw.line(surf, dark, (px + d * s * 1.0, py + s * 0.05), (px + d * s * 1.35, py + s * 0.35), lw)
+        if n == "Hunter":
+            pygame.draw.polygon(surf, dark, [(px - s * 0.1, py - s * 0.45),
+                                             (px - d * s * 1.3, py - s * 1.0), (px - d * s * 0.5, py - s * 0.15)])
+        if n == "Warrior":
+            pygame.draw.polygon(surf, dark, [(px - d * s * 0.1, py - s * 0.5),
+                                             (px + d * s * 0.3, py - s * 1.05), (px + d * s * 0.55, py - s * 0.45)])
+    elif n in ("Trooper", "Devastator", "Hulk"):
+        pygame.draw.line(surf, dark, (px - s * 0.25, py + s * 0.4), (px - s * 0.3 + lp * 0.4, py + s * 1.15), lw)
+        pygame.draw.line(surf, dark, (px + s * 0.25, py + s * 0.4), (px + s * 0.3 - lp * 0.4, py + s * 1.15), lw)
+        pygame.draw.rect(surf, col, (px - s * 0.7, py - s * 0.7, s * 1.4, s * 1.15))
+        pygame.draw.rect(surf, dark, (px - s * 0.7, py - s * 0.7, s * 1.4, s * 1.15), max(1, lw // 2))
+        sw = s * (0.95 if n == "Trooper" else 1.2)
+        pygame.draw.rect(surf, dark, (px - sw, py - s * 0.8, s * 0.4, s * 0.55))
+        pygame.draw.rect(surf, dark, (px + sw - s * 0.4, py - s * 0.8, s * 0.4, s * 0.55))
+        pygame.draw.rect(surf, col, (px - s * 0.32, py - s * 1.15, s * 0.64, s * 0.42))
+        pygame.draw.rect(surf, (255, 42, 42), (px - s * 0.24, py - s * 1.02, s * 0.48, s * 0.13))
+        pygame.draw.line(surf, dark, (px + d * s * 0.7, py - s * 0.2), (px + d * s * 1.35, py + s * 0.15), int(lw * 1.8))
+    elif n in ("Shrieker", "Watcher", "Overseer"):
+        wob = math.sin(st["time"] * 18 + t["ph"]) * s * 0.5
+        pygame.draw.polygon(surf, dark, [(px, py), (px - s * 2.1, py - s * 0.6 + wob), (px - s * 0.7, py + s * 0.25)])
+        pygame.draw.polygon(surf, dark, [(px, py), (px + s * 2.1, py - s * 0.6 - wob), (px + s * 0.7, py + s * 0.25)])
+        pygame.draw.ellipse(surf, col, (px - s * 0.7, py - s * 0.45, s * 1.4, s * 0.9))
+        pygame.draw.circle(surf, (20, 10, 5) if n == "Shrieker" else (150, 220, 255),
+                           (int(px + d * s * 0.45), int(py - s * 0.1)), max(1, int(s * 0.13)))
+        if n == "Overseer":
+            pygame.draw.circle(surf, (150, 220, 255), (int(px), int(py + s * 0.55)), max(1, int(s * 0.16)))
+    elif n == "Voteless":
+        pygame.draw.line(surf, dark, (px - s * 0.2, py + s * 0.3), (px - s * 0.25 + lp * 0.4, py + s * 1.15), lw)
+        pygame.draw.line(surf, dark, (px + s * 0.2, py + s * 0.3), (px + s * 0.25 - lp * 0.4, py + s * 1.15), lw)
+        pygame.draw.ellipse(surf, col, (px - s * 0.55, py - s * 0.65, s * 1.1, s * 1.15))
+        pygame.draw.circle(surf, col, (int(px + d * s * 0.55), int(py - s * 0.55)), int(s * 0.34))
+        pygame.draw.circle(surf, (60, 80, 100), (int(px + d * s * 0.68), int(py - s * 0.62)), max(1, int(s * 0.08)))
+    elif n == "Fleshmob":
+        for i in range(5):
+            ox = math.sin(i * 2.1 + t["ph"]) * s * 0.45
+            oy = math.cos(i * 1.7 + t["ph"]) * s * 0.35
+            pygame.draw.circle(surf, col if i % 2 else dark, (int(px + ox), int(py + oy)), int(s * 0.5))
+        pygame.draw.circle(surf, (90, 60, 80), (int(px + d * s * 0.55), int(py - s * 0.4)), max(2, int(s * 0.15)))
+    elif n == "Harvester":
+        for i in (-1, 0, 1):
+            pygame.draw.line(surf, dark, (px + i * s * 0.35, py + s * 0.1), (px + i * s * 0.9, py + s * 1.4), lw)
+        pygame.draw.ellipse(surf, col, (px - s * 0.85, py - s * 1.0, s * 1.7, s * 1.25))
+        pygame.draw.polygon(surf, dark, [(px - s * 0.3, py - s * 0.95), (px + s * 0.3, py - s * 0.95), (px, py - s * 1.55)])
+        pygame.draw.circle(surf, (150, 220, 255), (int(px), int(py - s * 0.35)), max(2, int(s * 0.18)))
+
+
 def panel(surf, rect):
-    s = pygame.Surface((rect[2], rect[3]), pygame.SRCALPHA)
-    s.fill((8, 12, 20, 185))
+    key = (rect[2], rect[3])
+    s = _PANELS.get(key)
+    if s is None:
+        s = pygame.Surface(key, pygame.SRCALPHA)
+        s.fill((8, 12, 20, 185))
+        _PANELS[key] = s
     surf.blit(s, rect[:2])
     pygame.draw.rect(surf, (255, 210, 74), rect, 1)
 
@@ -614,7 +695,7 @@ def panel(surf, rect):
 def draw():
     screen.fill((10, 18, 32))
     pygame.draw.rect(screen, (13, 21, 34), (0, horizon, W, H - horizon))
-    th = (255, 150, 60) if faction == "bugs" else (130, 180, 255) if faction == "bots" else (255, 210, 74)
+    th = {"bugs": (255, 150, 60), "bots": (130, 180, 255), "ill": (200, 140, 255)}.get(faction, (255, 210, 74))
     pygame.draw.line(screen, tuple(int(c * 0.6) for c in th), (0, horizon), (W, horizon))
     grid_col = tuple(int(c * 0.35) for c in th)
     z = 6
@@ -631,20 +712,7 @@ def draw():
         px, py = proj(t["x"], cy_t(t), t["z"])
         gy = proj(t["x"], 0, t["z"])[1]
         pygame.draw.ellipse(screen, (0, 0, 0), (px - s * 1.1, gy - s * 0.28, s * 2.2, s * 0.56))
-        col = (255, 255, 255) if t["flash"] > 0 else t["type"]["col"]
-        if t["type"]["kind"] == "bot":
-            pygame.draw.rect(screen, col, (px - s, py - s, s * 2, s * 2))
-            pygame.draw.rect(screen, (0, 0, 0), (px - s, py - s, s * 2, s * 2), max(1, int(s * 0.06)))
-            pygame.draw.rect(screen, (255, 42, 42), (px - s * 0.4, py - s * 0.4, s * 0.8, s * 0.25))
-        else:
-            pygame.draw.circle(screen, col, (px, py), s)
-            pygame.draw.circle(screen, (0, 0, 0), (px, py), s, max(1, int(s * 0.06)))
-            pygame.draw.circle(screen, (26, 15, 5), (px - s * 0.3, py - s * 0.2), s * 0.12)
-            pygame.draw.circle(screen, (26, 15, 5), (px + s * 0.3, py - s * 0.2), s * 0.12)
-        if t["fly"]:
-            wob = math.sin(st["time"] * 20 + t["ph"]) * s * 0.5
-            pygame.draw.line(screen, col, (px - s, py), (px - s * 2, py - s * 0.4 + wob), max(1, int(s * 0.12)))
-            pygame.draw.line(screen, col, (px + s, py), (px + s * 2, py - s * 0.4 - wob), max(1, int(s * 0.12)))
+        draw_target(screen, t, px, py, s)
         pygame.draw.rect(screen, (0, 0, 0), (px - s, py - s - 10, s * 2, 4))
         hpc = (125, 255, 92) if t["hp"] / t["type"]["hp"] > 0.4 else (255, 92, 92)
         pygame.draw.rect(screen, hpc, (px - s, py - s - 10, s * 2 * max(0, t["hp"] / t["type"]["hp"]), 4))
@@ -664,13 +732,13 @@ def draw():
         pygame.draw.circle(screen, (30, 30, 34), (int(px), int(py)), max(2, int(0.15 * F / n["z"])))
         if n["fuse"] < 0.8 and int(n["fuse"] * 10) % 2 == 0:
             pygame.draw.circle(screen, (255, 59, 59), (int(px), int(py)), max(2, int(0.1 * F / n["z"])))
-    # particles
+    # particles (no per-particle surfaces - fast)
     for p in parts:
         sx, sy = proj(p["x"], p["y"], p["z"])
         r = max(1, p["sz"] * F / p["z"])
-        s = pygame.Surface((r * 2, r * 2), pygame.SRCALPHA)
-        s.fill((*p["col"], int(255 * max(0, p["life"] / p["ml"]))))
-        screen.blit(s, (sx - r, sy - r))
+        a = max(0.0, min(1.0, p["life"] / p["ml"]))
+        col = tuple(int(c * (0.25 + 0.75 * a)) for c in p["col"])
+        pygame.draw.rect(screen, col, (sx - r, sy - r, r * 2, r * 2))
     # beams / explosion rings
     for b in beams:
         al = max(0, b["life"] / b["ml"])
@@ -754,22 +822,22 @@ def draw_hud():
     else:
         txt(screen, f"TIME   {int(st['time'])}s", 22, 90, 12, (159, 179, 200))
     # help + faction + sens + drill button
-    hp = pygame.Rect(W - 250, 12, 238, 150)
+    hp = pygame.Rect(W - 288, 12, 276, 150)
     panel(screen, hp)
     txt(screen, "CLICK = lock mouse   ESC = free", hp.x + 10, hp.y + 8, 11, (159, 179, 200))
     txt(screen, "LMB fire   RMB hold = cook nade", hp.x + 10, hp.y + 24, 11, (159, 179, 200))
     txt(screen, "G nade  R reload  1-0/wheel gun", hp.x + 10, hp.y + 40, 11, (159, 179, 200))
     txt(screen, "H hide UI   M mute   F faction", hp.x + 10, hp.y + 56, 11, (159, 179, 200))
     txt(screen, "FIGHTING:", hp.x + 10, hp.y + 76, 11, (255, 210, 74))
-    bx = hp.x + 76
-    for label, f in (("BUGS", "bugs"), ("BOTS", "bots"), ("MIXED", "mixed")):
-        r = pygame.Rect(bx, hp.y + 74, 50, 16)
+    bx = hp.x + 70
+    for label, f in (("BUGS", "bugs"), ("BOTS", "bots"), ("SQUIDS", "ill"), ("MIXED", "mixed")):
+        r = pygame.Rect(bx, hp.y + 74, 48, 16)
         ui["fac_" + f] = r
         on = faction == f
         pygame.draw.rect(screen, (60, 50, 20) if on else (20, 26, 36), r)
         pygame.draw.rect(screen, (255, 210, 74) if on else (80, 90, 105), r, 1)
         txt(screen, label, r.centerx, r.centery - 1, 10, (255, 210, 74) if on else (159, 179, 200), center=True)
-        bx += 54
+        bx += 51
     txt(screen, "SENS", hp.x + 10, hp.y + 98, 11, (255, 210, 74))
     sr = pygame.Rect(hp.x + 50, hp.y + 99, 130, 12)
     ui["sens"] = sr
@@ -866,7 +934,7 @@ def hud_click(pos):
         return True
     if not hudOn:
         return False
-    for f in ("bugs", "bots", "mixed"):
+    for f in ("bugs", "bots", "ill", "mixed"):
         if ui.get("fac_" + f) and ui["fac_" + f].collidepoint(pos):
             set_faction(f)
             return True
@@ -963,7 +1031,7 @@ def main():
                 elif k == pygame.K_m:
                     muted = not muted
                 elif k == pygame.K_f:
-                    set_faction({"mixed": "bugs", "bugs": "bots", "bots": "mixed"}[faction])
+                    set_faction({"mixed": "bugs", "bugs": "bots", "bots": "ill", "ill": "mixed"}[faction])
                 elif k == pygame.K_h:
                     hudOn = not hudOn
                 elif k == pygame.K_RETURN and st["drillDone"]:
