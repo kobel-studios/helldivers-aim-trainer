@@ -560,49 +560,64 @@ def thick_line(surf, p1, p2, w, col):
 def draw_viewmodel(surf, T):
     global muzzle_pos
     w = WEAPONS[wi]
-    bx = W * 0.34
-    base = H + 60
-    sway = math.sin(T * 1.6) * 5
-    arm = (20, 27, 38)
-    dark = (14, 18, 27)
+    k = H / 900.0
+    bx = W * 0.30
+    base = H + 40 * k
+    arm = (26, 33, 46)
+    dark = (13, 17, 25)
     trim = (255, 210, 74)
+    sway = math.sin(T * 1.7) * 6 * k
+    bob = math.sin(T * 2.3) * 3 * k
     # cape
-    pygame.draw.polygon(surf, (120, 30, 30),
-                        [(bx - 60, base - 260), (bx + 30, base - 250),
-                         (bx + 70 + sway, base), (bx - 120 + sway, base)])
+    pygame.draw.polygon(surf, (35, 28, 32), [
+        (bx - 35 * k, base - 300 * k + bob),
+        (bx + 45 * k, base - 285 * k + bob),
+        (bx + 20 * k + sway, base),
+        (bx - 150 * k + sway, base)])
+    pygame.draw.line(surf, trim, (bx - 150 * k + sway, base), (bx + 20 * k + sway, base), max(1, int(3 * k)))
+    # backpack
+    pygame.draw.rect(surf, dark, (bx - 70 * k, base - 295 * k + bob, 50 * k, 95 * k), border_radius=int(8 * k))
+    pygame.draw.rect(surf, trim, (bx - 70 * k, base - 295 * k + bob, 50 * k, 95 * k), max(1, int(2 * k)), border_radius=int(8 * k))
     # torso
-    pygame.draw.ellipse(surf, arm, (bx - 55, base - 270, 130, 200))
-    pygame.draw.rect(surf, trim, (bx - 50, base - 130, 120, 8))
-    # shoulder pad
-    pygame.draw.ellipse(surf, dark, (bx + 20, base - 265, 70, 55))
+    pygame.draw.ellipse(surf, arm, (bx - 55 * k, base - 280 * k + bob, 145 * k, 215 * k))
+    # belt
+    pygame.draw.rect(surf, dark, (bx - 50 * k, base - 145 * k + bob, 140 * k, 22 * k))
+    pygame.draw.rect(surf, trim, (bx - 50 * k, base - 130 * k + bob, 140 * k, 6 * k))
+    # shoulder pauldron
+    pygame.draw.ellipse(surf, dark, (bx + 30 * k, base - 285 * k + bob, 85 * k, 70 * k))
+    pygame.draw.circle(surf, trim, (int(bx + 72 * k), int(base - 250 * k + bob)), max(1, int(6 * k)))
     # helmet
-    hx, hy = bx - 15, base - 330
-    pygame.draw.ellipse(surf, dark, (hx, hy, 70, 75))
-    pygame.draw.rect(surf, (200, 230, 255), (hx + 12, hy + 34, 46, 9))  # visor
-    pygame.draw.line(surf, trim, (hx + 60, hy + 10), (hx + 75, hy - 25), 3)  # antenna
+    hx, hy = bx - 20 * k, base - 360 * k + bob
+    pygame.draw.ellipse(surf, arm, (hx, hy, 78 * k, 82 * k))
+    pygame.draw.ellipse(surf, dark, (hx, hy, 78 * k, 82 * k), max(1, int(3 * k)))
+    pygame.draw.rect(surf, (190, 225, 250), (hx + 14 * k, hy + 40 * k, 50 * k, 10 * k))
+    pygame.draw.rect(surf, (190, 225, 250), (hx + 34 * k, hy + 48 * k, 10 * k, 14 * k))
+    pygame.draw.line(surf, dark, (hx + 8 * k, hy + 18 * k), (hx + 70 * k, hy + 18 * k), max(1, int(3 * k)))
     # gun aimed at crosshair
-    sx, sy = bx + 55, base - 235
+    sx, sy = bx + 60 * k, base - 255 * k + bob
     ang = math.atan2(cy - sy, cx - sx)
-    glen = w["glen"]
-    recoil = muzzle * 14
-    gx = sx + math.cos(ang) * -recoil
-    gy = sy + math.sin(ang) * -recoil
+    glen = w["glen"] * k * 1.3
+    gx = sx - math.cos(ang) * muzzle * 16 * k
+    gy = sy - math.sin(ang) * muzzle * 16 * k
     mxp = (gx + math.cos(ang) * glen, gy + math.sin(ang) * glen)
     muzzle_pos = mxp
-    # arms to grip
-    grip = (gx + math.cos(ang) * glen * 0.35, gy + math.sin(ang) * glen * 0.35)
-    thick_line(surf, (bx + 30, base - 210), grip, 18, arm)
-    thick_line(surf, (bx - 10, base - 190), (gx + math.cos(ang) * 10, gy + math.sin(ang) * 10), 16, arm)
-    # gun body + barrel
-    thick_line(surf, (gx, gy), mxp, 16, dark)
-    thick_line(surf, (gx, gy), (gx + math.cos(ang) * glen * 0.55, gy + math.sin(ang) * glen * 0.55), 24, (24, 32, 45))
-    thick_line(surf, (mxp[0] - math.cos(ang) * 14, mxp[1] - math.sin(ang) * 14), mxp, 10, w["col"])
-    # mag
-    mg = (gx + math.cos(ang) * 25, gy + math.sin(ang) * 25)
-    thick_line(surf, mg, (mg[0] + math.sin(ang) * 26, mg[1] - math.cos(ang) * 26), 14, dark)
-    # muzzle flash
+    ux, uy = -math.sin(ang), math.cos(ang)
+    g1 = (gx + math.cos(ang) * glen * 0.18, gy + math.sin(ang) * glen * 0.18)
+    g2 = (gx + math.cos(ang) * glen * 0.55, gy + math.sin(ang) * glen * 0.55)
+    thick_line(surf, (bx + 45 * k, base - 230 * k + bob), g1, 20 * k, arm)
+    thick_line(surf, (bx + 5 * k, base - 200 * k + bob), g2, 18 * k, arm)
+    thick_line(surf, (gx - math.cos(ang) * 30 * k, gy - math.sin(ang) * 30 * k), (gx, gy), 18 * k, dark)
+    thick_line(surf, (gx, gy), (gx + math.cos(ang) * glen * 0.55, gy + math.sin(ang) * glen * 0.55), 26 * k, (24, 32, 45))
+    thick_line(surf, (gx + math.cos(ang) * glen * 0.5, gy + math.sin(ang) * glen * 0.5), mxp, 12 * k, dark)
+    thick_line(surf, (mxp[0] - math.cos(ang) * 16 * k, mxp[1] - math.sin(ang) * 16 * k), mxp, 10 * k, w["col"])
+    mg = (gx + math.cos(ang) * glen * 0.3, gy + math.sin(ang) * glen * 0.3)
+    thick_line(surf, mg, (mg[0] + ux * 30 * k, mg[1] + uy * 30 * k), 14 * k, dark)
+    sg = (gx + math.cos(ang) * glen * 0.5, gy + math.sin(ang) * glen * 0.5)
+    thick_line(surf, sg, (sg[0] - ux * 16 * k, sg[1] - uy * 16 * k), 6 * k, dark)
+    pygame.draw.circle(surf, dark, (int(g1[0]), int(g1[1])), int(11 * k))
+    pygame.draw.circle(surf, dark, (int(g2[0]), int(g2[1])), int(10 * k))
     if muzzle > 0:
-        r = 18 * muzzle
+        r = 20 * muzzle * k
         pts = []
         for i in range(8):
             rr = r if i % 2 == 0 else r * 0.4

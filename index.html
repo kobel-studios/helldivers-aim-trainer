@@ -94,6 +94,7 @@ const WEAPONS=[
  {name:'ARC-12 BLITZER',  hk:'0', mode:'zap',    rpm:55,  dmg:130, range:32, chains:3, mag:8, rel:2.4, col:'#9de8ff', note:'Instant arc, chains'},
  {name:'RS-422 RAILGUN',  hk:'-', mode:'charge', dmg:900, chargeMax:1.2, mag:20, rel:1.0, col:'#c9b6ff', note:'Hold LMB to charge, pierces'},
 ];
+[110,100,120,115,105,140,150,110,95,105,125].forEach((g,i)=>WEAPONS[i].glen=g);
 
 // ---------- enemies ----------
 const TYPES=[
@@ -118,6 +119,7 @@ let targets=[],projs=[],nades=[],parts=[],floats=[],beams=[];
 let mx=innerWidth/2,my=innerHeight/2,mDown=false,rDown=false;
 let wi=0,cd=0,reloadT=0,spawnT=.5,muzzle=0,accT=0,charge=-1,nadeT0=0,flameAcc=0,redFlash=0,bloom=0;
 let faction='mixed',locked=false,sens=0.9,hudOn=true;
+let muzzlePos=[W/2,H-80];
 const ammo=WEAPONS.map(w=>w.mag);
 const cy=t=>t.fly?t.y:t.r*0.9;
 
@@ -389,6 +391,53 @@ function drawTarget(t,px,py,s){
   ctx.fillStyle='#96dcff';ctx.beginPath();ctx.arc(px,py-s*.35,Math.max(2,s*.18),0,7);ctx.fill();
  }
 }
+function drawViewmodel(){
+ const w=WEAPONS[wi],k=H/900,bx=W*0.30,base=H+40*k;
+ const arm='#1a212e',dk='#0d1119',tr='#ffd24a';
+ const sway=Math.sin(st.time*1.7)*6*k,bob=Math.sin(st.time*2.3)*3*k;
+ const poly=p=>{ctx.beginPath();ctx.moveTo(p[0][0],p[0][1]);for(let i=1;i<p.length;i++)ctx.lineTo(p[i][0],p[i][1]);ctx.closePath();ctx.fill();};
+ const tl=(a,b,w2,c)=>{ctx.strokeStyle=c;ctx.lineWidth=w2;seg(a[0],a[1],b[0],b[1]);};
+ ctx.fillStyle='#231c20';
+ poly([[bx-35*k,base-300*k+bob],[bx+45*k,base-285*k+bob],[bx+20*k+sway,base],[bx-150*k+sway,base]]);
+ ctx.strokeStyle=tr;ctx.lineWidth=3*k;seg(bx-150*k+sway,base,bx+20*k+sway,base);
+ ctx.fillStyle=dk;ctx.fillRect(bx-70*k,base-295*k+bob,50*k,95*k);
+ ctx.strokeStyle=tr;ctx.lineWidth=2*k;ctx.strokeRect(bx-70*k,base-295*k+bob,50*k,95*k);
+ ctx.fillStyle=arm;ell(bx+17*k,base-172*k+bob,72*k,107*k);
+ ctx.fillStyle=dk;ctx.fillRect(bx-50*k,base-145*k+bob,140*k,22*k);
+ ctx.fillStyle=tr;ctx.fillRect(bx-50*k,base-130*k+bob,140*k,6*k);
+ ctx.fillStyle=dk;ell(bx+72*k,base-250*k+bob,42*k,35*k);
+ ctx.fillStyle=tr;ctx.beginPath();ctx.arc(bx+72*k,base-250*k+bob,6*k,0,7);ctx.fill();
+ const hx=bx-20*k,hy=base-360*k+bob;
+ ctx.fillStyle=arm;ell(hx+39*k,hy+41*k,39*k,41*k);
+ ctx.strokeStyle=dk;ctx.lineWidth=3*k;ctx.beginPath();ctx.ellipse(hx+39*k,hy+41*k,39*k,41*k,0,0,7);ctx.stroke();
+ ctx.fillStyle='#bee1fa';ctx.fillRect(hx+14*k,hy+40*k,50*k,10*k);ctx.fillRect(hx+34*k,hy+48*k,10*k,14*k);
+ ctx.strokeStyle=dk;ctx.lineWidth=3*k;seg(hx+8*k,hy+18*k,hx+70*k,hy+18*k);
+ const sx=bx+60*k,sy=base-255*k+bob,ang=Math.atan2(my-sy,mx-sx);
+ const glen=w.glen*k*1.3;
+ const gx=sx-Math.cos(ang)*muzzle*16*k,gy=sy-Math.sin(ang)*muzzle*16*k;
+ const mxp=[gx+Math.cos(ang)*glen,gy+Math.sin(ang)*glen];
+ muzzlePos=mxp;
+ const ux=-Math.sin(ang),uy=Math.cos(ang);
+ const g1=[gx+Math.cos(ang)*glen*.18,gy+Math.sin(ang)*glen*.18];
+ const g2=[gx+Math.cos(ang)*glen*.55,gy+Math.sin(ang)*glen*.55];
+ tl([bx+45*k,base-230*k+bob],g1,20*k,arm);
+ tl([bx+5*k,base-200*k+bob],g2,18*k,arm);
+ tl([gx-Math.cos(ang)*30*k,gy-Math.sin(ang)*30*k],[gx,gy],18*k,dk);
+ tl([gx,gy],[gx+Math.cos(ang)*glen*.55,gy+Math.sin(ang)*glen*.55],26*k,'#18202d');
+ tl([gx+Math.cos(ang)*glen*.5,gy+Math.sin(ang)*glen*.5],mxp,12*k,dk);
+ tl([mxp[0]-Math.cos(ang)*16*k,mxp[1]-Math.sin(ang)*16*k],mxp,10*k,w.col);
+ const mg=[gx+Math.cos(ang)*glen*.3,gy+Math.sin(ang)*glen*.3];
+ tl(mg,[mg[0]+ux*30*k,mg[1]+uy*30*k],14*k,dk);
+ const sg=[gx+Math.cos(ang)*glen*.5,gy+Math.sin(ang)*glen*.5];
+ tl(sg,[sg[0]-ux*16*k,sg[1]-uy*16*k],6*k,dk);
+ ctx.fillStyle=dk;ctx.beginPath();ctx.arc(g1[0],g1[1],11*k,0,7);ctx.fill();
+ ctx.beginPath();ctx.arc(g2[0],g2[1],10*k,0,7);ctx.fill();
+ if(muzzle>0){
+  const r=20*muzzle*k;ctx.fillStyle='rgba(255,230,150,'+muzzle+')';
+  const pts=[];for(let i=0;i<8;i++){const rr=i%2?r*.4:r,a=ang+i*Math.PI/4;pts.push([mxp[0]+Math.cos(a)*rr,mxp[1]+Math.sin(a)*rr]);}
+  poly(pts);
+ }
+}
 function draw(){
  const g=ctx.createLinearGradient(0,0,0,H);
  g.addColorStop(0,'#0a1220');g.addColorStop(.45,'#101c2e');g.addColorStop(1,'#05070c');
@@ -423,11 +472,16 @@ function draw(){
  }
  // projectiles (tracers)
  for(const p of projs){
-  const a=proj(p.x-p.vx*.015,p.y-p.vy*.015,p.z-p.vz*.015),b=proj(p.x,p.y,p.z);
-  ctx.strokeStyle=p.col;ctx.lineWidth=p.flame?6:2;
-  ctx.globalAlpha=p.flame?.5:.9;
-  ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.stroke();
-  ctx.globalAlpha=1;
+  const b=proj(p.x,p.y,p.z);
+  if(p.flame){
+   ctx.globalAlpha=.5;ctx.fillStyle=p.col;
+   ctx.beginPath();ctx.arc(b[0],b[1],Math.max(2,.12*F/p.z),0,7);ctx.fill();
+   ctx.globalAlpha=1;
+  }else{
+   ctx.strokeStyle=p.col;ctx.lineWidth=2;
+   ctx.beginPath();ctx.moveTo(muzzlePos[0],muzzlePos[1]);ctx.lineTo(b[0],b[1]);ctx.stroke();
+   ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(b[0],b[1],2,0,7);ctx.fill();
+  }
  }
  // grenades
  for(const n of nades){
@@ -469,14 +523,8 @@ function draw(){
   ctx.font='bold '+f.size+'px Arial';ctx.textAlign='center';
   ctx.fillText(f.txt,f.x,f.y);ctx.globalAlpha=1;
  }
- // gun
- const ang=Math.atan2(my-(H+30),mx-W/2);
- ctx.save();ctx.translate(W/2,H+30);ctx.rotate(ang);
- ctx.fillStyle='#1a2230';ctx.fillRect(0,-8,110,16);
- ctx.fillStyle=WEAPONS[wi].col;ctx.fillRect(100,-5,12,10);
- if(muzzle>0){ctx.fillStyle='rgba(255,230,150,'+muzzle+')';
-  ctx.beginPath();ctx.arc(118,0,14*muzzle,0,7);ctx.fill();}
- ctx.restore();
+ // helldiver viewmodel (over-shoulder third person)
+ drawViewmodel();
  // grenade arc preview while cooking
  if(rDown){
   const power=Math.min(1,(performance.now()-nadeT0)/1200);
