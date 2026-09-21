@@ -1,14 +1,32 @@
 # Helldivers 2 Aim Trainer
 
-A single-file, browser-based aim trainer themed after Helldivers 2. Open `index.html` in any browser — no install, no dependencies.
+A Helldivers 2 style aim trainer with projectile drop, grenade arcs, and the HD2 weapon roster.
+
+## GUI App (recommended)
+
+Real windowed app — you play as a Helldiver, over-the-shoulder view, tracers come out of the actual gun barrel.
+
+```
+pip install pygame
+python aim_trainer.py
+```
+
+Or double-click the **Helldivers Aim Trainer** desktop shortcut.
+
+## Browser version
+
+Open `index.html` in any browser — no install, no dependencies.
 
 ## Features
 
-- **Projectile drop** — slow rounds (Dominator, Eruptor, Recoilless) fall over distance, so you have to aim above far targets
+- **Helldiver character viewmodel** — see your diver, cape, and gun; shots fire from the muzzle
+- **Projectile drop** — slow rounds (Dominator, Eruptor, Recoilless) fall over distance, aim above far targets
 - **Charged grenades** — hold RMB to cook, dotted arc preview shows the throw, bounce + fuse + AoE
 - **HD2 weapon roster** — 11 weapons with different fire modes, drop, spread, AoE, falloff
+- **Faction picker** — Terminids, Automatons, or mixed spawns
 - **Bug & bot targets** — Scavengers, Hunters, Warriors, Bile Spewers, Shriekers, Troopers, Devastators, Hulks
 - **60s drill mode**, score / accuracy / streak tracking
+- **Pointer-lock aiming** — mouse never hits the window edge
 
 ## Weapons
 
@@ -28,11 +46,12 @@ A single-file, browser-based aim trainer themed after Helldivers 2. Open `index.
 
 ## Controls
 
+- **Click window** — lock mouse (FPS aim), **ESC** releases it
 - **LMB** — fire (hold for auto/beam/flame, hold to charge railgun)
 - **RMB hold** — cook grenade with arc preview, release to throw
-- **G** — quick grenade
-- **R** — reload
-- **1-0, -** / mouse wheel / click cards — switch weapon
-- **M** — mute
+- **G** — quick grenade, **R** — reload
+- **1-0, -** / scroll wheel / click cards — switch weapon
+- **F** — cycle faction, **H** — hide UI, **M** — mute
+- **F11** — fullscreen (app version)
 
 For Super Earth.
