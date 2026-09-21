@@ -31,6 +31,9 @@
  #overlay h1{margin:0 0 10px;color:#ffd24a;letter-spacing:2px}
  #overlay p{color:#cfe0f0;margin:4px 0}
  #overlay button{margin-top:14px;background:#ffd24a;border:0;color:#000;font-weight:700;padding:8px 22px;border-radius:4px;cursor:pointer}
+ .fbtn{background:transparent;border:1px solid rgba(255,255,255,.25);color:#9fb3c8;padding:2px 8px;border-radius:4px;cursor:pointer;font-size:10px;margin:2px 1px}
+ .fbtn.on{border-color:#ffd24a;color:#ffd24a;background:rgba(255,210,74,.12)}
+ #sens{width:110px;vertical-align:middle}
 </style>
 </head>
 <body>
@@ -39,9 +42,13 @@
 <div id="timer"></div>
 <div id="stats" class="panel"></div>
 <div id="help" class="panel">
- <b>LMB</b> fire &nbsp; <b>RMB hold</b> cook grenade<br>
- <b>G</b> quick grenade &nbsp; <b>R</b> reload<br>
- <b>1-0 / wheel / click</b> weapons &nbsp; <b>M</b> mute<br>
+ <b>CLICK GAME</b> = lock mouse (FPS aim) &nbsp; <b>ESC</b> free<br>
+ <b>LMB</b> fire &nbsp; <b>RMB hold</b> cook grenade &nbsp; <b>G</b> quick<br>
+ <b>R</b> reload &nbsp; <b>1-0 / wheel</b> weapons &nbsp; <b>H</b> hide UI &nbsp; <b>M</b> mute<br>
+ <div style="margin:5px 0 2px">FIGHTING:
+ <button class="fbtn" data-f="bugs">TERMINIDS</button><button class="fbtn" data-f="bots">AUTOMATONS</button><button class="fbtn on" data-f="mixed">MIXED</button>
+ </div>
+ SENS <input id="sens" type="range" min="30" max="200" value="90"><br>
  <button id="drillBtn">START 60s DRILL</button>
 </div>
 <div id="ammo" class="panel"></div>
@@ -105,6 +112,7 @@ const st={score:0,kills:0,shots:0,hits:0,streak:0,best:0,time:0,drill:false,dril
 let targets=[],projs=[],nades=[],parts=[],floats=[],beams=[];
 let mx=innerWidth/2,my=innerHeight/2,mDown=false,rDown=false;
 let wi=0,cd=0,reloadT=0,spawnT=.5,muzzle=0,accT=0,charge=-1,nadeT0=0,flameAcc=0,redFlash=0,bloom=0;
+let faction='mixed',locked=false,sens=0.9,hudOn=true;
 const ammo=WEAPONS.map(w=>w.mag);
 const cy=t=>t.fly?t.y:t.r*0.9;
 
@@ -234,8 +242,17 @@ function throwNade(power){
  nades.push({x:.3,y:CAM_H-.2,z:.5,vx:d[0]*s,vy:d[1]*s+2,vz:d[2]*s,fuse:2.4,dead:false});
  tone(300,.05,'sine',.03);
 }
+function facOk(t){
+ if(faction==='bugs')return t.kind!=='bot';
+ if(faction==='bots')return t.kind==='bot';
+ return true;
+}
+function setFaction(f){
+ faction=f;targets=[];spawnT=.4;
+ document.querySelectorAll('.fbtn').forEach(b=>b.className='fbtn'+(b.dataset.f===f?' on':''));
+}
 function spawn(){
- const pool=TYPES.filter(t=>st.time>=(t.min||0));
+ const pool=TYPES.filter(t=>st.time>=(t.min||0)&&facOk(t));
  let tw=0;for(const t of pool)tw+=t.wt;
  let r=Math.random()*tw,type=pool[0];
  for(const t of pool){r-=t.wt;if(r<=0){type=t;break;}}
@@ -324,9 +341,10 @@ function draw(){
  g.addColorStop(0,'#0a1220');g.addColorStop(.45,'#101c2e');g.addColorStop(1,'#05070c');
  ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
  ctx.fillStyle='#0d1522';ctx.fillRect(0,horizon,W,H-horizon);
- ctx.strokeStyle='rgba(255,210,74,.25)';ctx.lineWidth=1;
+ const th=faction==='bugs'?'255,150,60':faction==='bots'?'130,180,255':'255,210,74';
+ ctx.strokeStyle='rgba('+th+',.25)';ctx.lineWidth=1;
  ctx.beginPath();ctx.moveTo(0,horizon);ctx.lineTo(W,horizon);ctx.stroke();
- ctx.strokeStyle='rgba(120,160,220,.14)';
+ ctx.strokeStyle='rgba('+th+',.13)';
  for(let z=6;z<=100;z+=z<30?4:8){
   const y=proj(0,0,z)[1];
   ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();
@@ -438,6 +456,7 @@ function draw(){
   ctx.strokeRect(mx-30,my+24,60,7);
   ctx.fillStyle='#ffd24a';ctx.fillRect(mx-30,my+24,60*power,7);
  }
+ if(!hudOn){ctx.fillStyle='rgba(255,210,74,.5)';ctx.font='11px Arial';ctx.textAlign='left';ctx.fillText('H = SHOW UI',12,H-12);}
  // crosshair
  const w=WEAPONS[wi];
  const cr=9+(w.spread||0)*4+bloom*10;
@@ -498,9 +517,20 @@ function endDrill(){
 }
 $('drillBtn').onclick=startDrill;
 $('ovBtn').onclick=()=>{$('overlay').style.display='none';resetStats();};
+function toggleHud(){
+ hudOn=!hudOn;
+ for(const id of['stats','help','bar','ammo','title'])$(id).style.display=hudOn?'':'none';
+}
+document.querySelectorAll('.fbtn').forEach(b=>b.onclick=()=>setFaction(b.dataset.f));
+$('sens').oninput=e=>{sens=e.target.value/100;};
 
 // ---------- input ----------
-addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;});
+addEventListener('mousemove',e=>{
+ if(locked){mx=Math.max(0,Math.min(W,mx+e.movementX*sens));my=Math.max(0,Math.min(H,my+e.movementY*sens));}
+ else{mx=e.clientX;my=e.clientY;}
+});
+cv.addEventListener('click',()=>{if(!locked)cv.requestPointerLock();});
+document.addEventListener('pointerlockchange',()=>{locked=document.pointerLockElement===cv;});
 cv.addEventListener('mousedown',e=>{
  if(e.button===0){
   mDown=true;
@@ -533,6 +563,8 @@ addEventListener('keydown',e=>{
  if(k==='r')startReload();
  if(k==='g')throwNade(.55);
  if(k==='m')muted=!muted;
+ if(k==='f')setFaction(faction==='mixed'?'bugs':faction==='bugs'?'bots':'mixed');
+ if(k==='h')toggleHud();
  if(k==='enter'&&$('overlay').style.display==='flex')$('ovBtn').click();
 });
 
